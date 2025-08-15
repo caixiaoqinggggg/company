@@ -97,9 +97,7 @@ export default function CompanyAnalysisPage() {
         const responseData = response as any;
         setJsonData(responseData);
         setLlmData(responseData?.formatted_prompt || '');
-        console.log('设置jsonData成功:', responseData);
       } else {
-        console.error('API响应为空');
         message.error('API响应为空');
         return;
       }
