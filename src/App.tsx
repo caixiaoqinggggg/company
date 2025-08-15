@@ -51,6 +51,10 @@ export default function CompanyAnalysisPage() {
   const [categoryAnalysisData, setCategoryAnalysisData] = useState<any>(null);
   const [competitorAnalysisData, setCompetitorAnalysisData] = useState<any>(null);
 
+  // 新增loading状态
+  const [categoryLoading, setCategoryLoading] = useState(false);
+  const [competitorLoading, setCompetitorLoading] = useState(false);
+
   // 左侧栏全局属性
   const [classificationCriterion, setClassificationCriterion] = useState<string>(CLASSIFICATION_CRITERIA.SW);
   const [tier, setTier] = useState<string>(CLASSIFICATION_TIER.TIER1);
@@ -60,6 +64,7 @@ export default function CompanyAnalysisPage() {
 
   // 右侧抽屉状态
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const [drawerCollapsed, setDrawerCollapsed] = useState(false);
 
   // 报告数据
   const [competitorReportData, setCompetitorReportData] = useState<string>('');
@@ -69,142 +74,6 @@ export default function CompanyAnalysisPage() {
   const [activeTabKey, setActiveTabKey] = useState<string>('company');
   const [tabOrder, setTabOrder] = useState<string[]>(['company']);
 
-  const mockData = {
-    competitorReport: `# 竞争对手分析报告
-
-## 一、主体公司概况
-
-**公司名称**: 东莞长联新材料科技股份有限公司
-
-### 1.1 主营业务
-- 专业从事印花材料的研发、生产与销售
-- 主要产品包括：
-  - 水性印花胶浆（包括通用型、数码胶浆等）
-  - 水性树脂
-  - 丝印硅胶
-  - 数码涂料墨水
-  - 自动化印花设备
-
-### 1.2 经营范围
-- 涉及印花材料与设备的研发、设计与销售
-
-### 1.3 主要产品与服务
-- 环保、手感柔软、耐洗水等特性，广泛应用于纺织印花领域
-
----
-
-## 二、竞争对手概况
-
-### 2.1 中山市盈丰泰水性涂料有限公司
-- **主营业务**: 水性印花材料领域，产品包括水性印花胶浆、数码涂料墨水等
-- **经营范围**: 涂料与颜料的制造与销售
-- **主要产品**: 包括多种水性印花胶浆及自动化印花设备
-
-### 2.2 东莞市彩韵新材料有限公司
-- **主营业务**: 水性服装印花材料及助剂的生产与销售
-- **经营范围**: 提供高端印花浆料及设备的研发与销售
-- **主要产品**: 涉及水性PU、胶浆等多种印花材料
-
-### 2.3 Rutland Corporation
-- **主营业务**: 废物管理，未直接从事印花材料业务
-- **经营范围**: 固体废物管理服务
-- **主要产品**: 不涉及印花材料，与主体公司竞争关系不显著
-
-### 2.4 石狮市德采化工科技有限公司
-- **主营业务**: 分散染料与水性印花涂料的研发与生产
-- **经营范围**: 水性印花涂料合成加工及染料销售
-- **主要产品**: 中高端分散染料及印花涂料
-
-### 2.5 Matsui International Company Inc.
-- **主营业务**: 颜料与油墨的生产与销售
-- **经营范围**: 油墨、颜料及相关产品的开发与销售
-- **主要产品**: 涉及多种水性油墨及特种油墨
-
----
-
-## 三、竞争关系分析
-
-### 3.1 竞争重叠
-- **产品线重叠**: 东莞长联新材料与中山市盈丰泰水性涂料有限公司、东莞市彩韵新材料有限公司在水性印花材料的研发与生产上存在直接竞争关系。
-- **市场定位相似**: 三家公司均专注于环保型水性印花材料，服务于纺织品印花市场。
-
-### 3.2 市场背景
-- **行业趋势**: 随着环保法规的日益严格，水性印花材料市场需求上升，这为以上公司提供了良好的市场机遇。
-- **技术进步**: 自动化印花设备的研发与应用增强了市场竞争力，促使各公司不断更新和优化产品。
-
-### 3.3 竞争优势与劣势
-- **竞争优势**:
-  - 东莞长联新材料科技股份有限公司在环保型材料的研发上具备深厚的技术积累。
-  - 中山市盈丰泰水性涂料有限公司在市场份额和品牌影响力方面相对较强。
-  
-- **竞争劣势**:
-  - 东莞长联可能在市场推广和渠道建设上相对薄弱。
-  - 中山市盈丰泰可能在产品多样性和创新能力上面临挑战。
-
----
-
-## 四、结论
-东莞长联新材料科技股份有限公司与中山市盈丰泰水性涂料有限公司、东莞市彩韵新材料有限公司之间的竞争关系主要源于市场需求的重叠和产品特性的相似。随着环保型材料的市场需求上升，竞争将愈发激烈。建议主体公司在保持技术创新的同时，加强市场推广与客户关系管理，以巩固其市场地位。`,
-
-    categoryReport: `# 分类预测分析报告
-
-## 一、公司基本信息
-
-**公司名称**: 东莞长联新材料科技股份有限公司
-
-## 二、分类预测结果
-
-### 2.1 申万行业分类（一级）
-- **主要分类**: 化工
-- **置信度**: 95.2%
-
-### 2.2 申万行业分类（二级）
-- **主要分类**: 化学制品
-- **置信度**: 92.8%
-
-### 2.3 国证行业分类
-- **主要分类**: 基础化工
-- **置信度**: 89.5%
-
-## 三、分类依据分析
-
-### 3.1 主营业务匹配度
-- 印花材料研发、生产与销售
-- 水性印花胶浆、树脂等化工产品
-- 符合化工行业特征
-
-### 3.2 技术特征分析
-- 新材料技术研发
-- 环保型化工产品
-- 符合化学制品细分领域
-
-## 四、行业发展趋势
-
-### 4.1 市场前景
-- 环保政策推动水性材料需求
-- 纺织印花行业持续发展
-- 新材料技术不断创新
-
-### 4.2 竞争格局
-- 行业集中度逐步提升
-- 技术壁垒日益明显
-- 环保要求日趋严格
-
-## 五、投资建议
-
-### 5.1 优势分析
-- 技术研发能力较强
-- 产品环保性能突出
-- 市场定位明确
-
-### 5.2 风险提示
-- 原材料价格波动
-- 环保政策变化
-- 市场竞争加剧
-
-## 六、结论
-东莞长联新材料科技股份有限公司在化工行业分类中具有较高的置信度，主要归属于化学制品细分领域。公司在新材料研发和环保产品方面具有明显优势，未来发展前景良好。`
-  };
 
   const handleSearch = async () => {
     if (!companyName.trim()) {
@@ -266,6 +135,9 @@ export default function CompanyAnalysisPage() {
 
     try {
       if (pendingPanel === "category") {
+        // 设置分类预测loading状态
+        setCategoryLoading(true);
+
         // 调用 Top-N 分类预测接口
         const response = await companyApi.classifyTopN({
           name: companyName.trim(),
@@ -273,13 +145,20 @@ export default function CompanyAnalysisPage() {
           tier: tier,
           top_k: topK,
         });
+
+
         setCategoryAnalysisData(response);
 
         // 设置分类预测数据状态
         setHasCategoryData(true);
 
-        // 使用mockData中的分类预测报告
-        setCategoryReportData(mockData.categoryReport);
+        // 使用后端返回的report字段作为报告数据
+        setCategoryReportData((response as any).report || '');
+
+        // 显示成功消息，包含info内容
+        if ((response as any).info) {
+          message.success((response as any).info);
+        }
 
         // 将分类预测标签页添加到末尾
         setTabOrder(prev => {
@@ -293,6 +172,9 @@ export default function CompanyAnalysisPage() {
         setActiveTabKey('category');
 
       } else if (pendingPanel === "competitor") {
+        // 设置竞争对手分析loading状态
+        setCompetitorLoading(true);
+
         // 调用竞争对手召回接口
         const response = await companyApi.getCompetitors({
           name: companyName.trim(),
@@ -303,8 +185,13 @@ export default function CompanyAnalysisPage() {
         // 设置竞争对手数据状态
         setHasCompetitorData(true);
 
-        // 使用mockData中的竞争对手分析报告
-        setCompetitorReportData(mockData.competitorReport);
+        // 使用后端返回的report字段作为报告数据
+        setCompetitorReportData((response as any).report || '');
+
+        // 显示成功消息，包含info内容
+        if ((response as any).info) {
+          message.success((response as any).info);
+        }
 
         // 将竞争对手分析标签页添加到末尾
         setTabOrder(prev => {
@@ -320,8 +207,13 @@ export default function CompanyAnalysisPage() {
 
       // 确保抽屉打开
       setDrawerVisible(true);
+      setDrawerCollapsed(false);
     } catch (error: any) {
       message.error(error.message || "分析失败，请重试");
+    } finally {
+      // 重置loading状态
+      setCategoryLoading(false);
+      setCompetitorLoading(false);
     }
   };
 
@@ -374,7 +266,7 @@ export default function CompanyAnalysisPage() {
           {!sidebarCollapsed && (
             <div style={{ marginBottom: '20px' }}>
               <Text strong style={{ display: 'block', marginBottom: '8px' }}>
-                分类标准 *
+                分类标准
               </Text>
               <Select
                 value={classificationCriterion}
@@ -451,7 +343,7 @@ export default function CompanyAnalysisPage() {
           padding: '24px',
           background: '#f5f5f5',
           transition: 'all 0.3s ease',
-          marginRight: drawerVisible ? '600px' : '0px'
+          marginRight: drawerVisible ? (drawerCollapsed ? '80px' : '600px') : '0px'
         }}
       >
         <div style={{
@@ -459,16 +351,6 @@ export default function CompanyAnalysisPage() {
           margin: '0 auto',
           transition: 'all 0.3s ease'
         }}>
-          {/* 页面标题 */}
-          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <Title level={1} style={{ marginBottom: '8px', color: '#262626' }}>
-              <CopyOutlined style={{ marginRight: '12px', color: '#1890ff' }} />
-              公司分析工具
-            </Title>
-            <Text type="secondary" style={{ fontSize: '16px' }}>
-              输入公司名称，获取详细的分析报告
-            </Text>
-          </div>
 
           {/* 主卡片容器 */}
           <Card
@@ -486,7 +368,7 @@ export default function CompanyAnalysisPage() {
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 onPressEnter={handleSearch}
-                prefix={<CopyOutlined />}
+                prefix={<SearchOutlined />}
                 style={{ fontSize: '16px' }}
               />
             </div>
@@ -501,9 +383,11 @@ export default function CompanyAnalysisPage() {
                     block
                     icon={<FilterOutlined />}
                     onClick={() => handlePanelClick("category")}
+                    loading={categoryLoading}
+                    disabled={categoryLoading}
                     style={{ height: '48px' }}
                   >
-                    分类筛选
+                    {categoryLoading ? '分析中...' : '分类筛选'}
                   </Button>
                 </Col>
                 <Col span={12}>
@@ -513,9 +397,11 @@ export default function CompanyAnalysisPage() {
                     block
                     icon={<TeamOutlined />}
                     onClick={() => handlePanelClick("competitor")}
+                    loading={competitorLoading}
+                    disabled={competitorLoading}
                     style={{ height: '48px' }}
                   >
-                    竞争对手分析
+                    {competitorLoading ? '分析中...' : '竞争对手分析'}
                   </Button>
                 </Col>
               </Row>
@@ -533,7 +419,12 @@ export default function CompanyAnalysisPage() {
                   </Space>
                 }
               >
-                {categoryAnalysisData ? (
+                {categoryLoading ? (
+                  <div style={{ textAlign: 'center', padding: '20px', color: '#1890ff' }}>
+                    <Spin size="small" style={{ marginRight: '8px' }} />
+                    <Text>正在分析中...</Text>
+                  </div>
+                ) : categoryAnalysisData ? (
                   <div>
                     <Text strong>预测结果：</Text>
                     <div style={{ marginTop: '12px' }}>
@@ -575,7 +466,12 @@ export default function CompanyAnalysisPage() {
                   </Space>
                 }
               >
-                {competitorAnalysisData ? (
+                {competitorLoading ? (
+                  <div style={{ textAlign: 'center', padding: '20px', color: '#1890ff' }}>
+                    <Spin size="small" style={{ marginRight: '8px' }} />
+                    <Text>正在分析中...</Text>
+                  </div>
+                ) : competitorAnalysisData ? (
                   <div>
                     <Text strong>竞争对手列表：</Text>
                     <div style={{ marginTop: '12px' }}>
@@ -628,93 +524,182 @@ export default function CompanyAnalysisPage() {
       <Drawer
         title={
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '20px' }}>分析报告</span>
-            <Button
-              type="text"
-              icon={<CloseOutlined />}
-              onClick={() => setDrawerVisible(false)}
-              size="small"
-              title="关闭报告"
-            />
+            <span style={{ fontSize: '20px', display: drawerCollapsed ? 'none' : 'block' }}>分析报告</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Button
+                type="text"
+                icon={drawerCollapsed ? <MenuFoldOutlined /> :  <MenuUnfoldOutlined />}
+                onClick={() => setDrawerCollapsed(!drawerCollapsed)}
+                size="small"
+                title={drawerCollapsed ? '展开抽屉' : '收起抽屉'}
+              />
+              {!drawerCollapsed && (
+                <Button
+                  type="text"
+                  icon={<CloseOutlined />}
+                  onClick={() => setDrawerVisible(false)}
+                  size="small"
+                  title="关闭报告"
+                />
+              )}
+            </div>
           </div>
         }
         placement="right"
-        width={600}
+        width={drawerCollapsed ? 80 : 600}
         open={drawerVisible}
         onClose={() => setDrawerVisible(false)}
         closable={false}
         mask={false}
         style={{ zIndex: 1000 }}
         bodyStyle={{
-          padding: '16px',
+          padding: drawerCollapsed ? '8px' : '16px',
           overflow: 'hidden'
         }}
       >
-        <div style={{ height: '100%', overflow: 'auto' }}>
-          <Tabs
-            activeKey={activeTabKey}
-            onChange={setActiveTabKey}
-            size="small"
-          >
+        {drawerCollapsed ? (
+          // 收起状态：只显示图标
+          <div style={{
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '16px'
+          }}>
             {tabOrder.map(tabKey => {
               if (tabKey === 'company') {
                 return (
-                  <TabPane
+                  <div
                     key="company"
-                    tab={
-                      <span style={{ padding: '0 5px' }}>
-                        <FileTextOutlined style={{ marginRight: '8px' }} />
-                        企业分析报告
-                      </span>
-                    }
+                    style={{
+                      cursor: 'pointer',
+                      padding: '12px',
+                      borderRadius: '6px',
+                      background: activeTabKey === 'company' ? '#1890ff' : '#f0f0f0',
+                      color: activeTabKey === 'company' ? '#fff' : '#666',
+                      transition: 'all 0.3s ease'
+                    }}
+                    onClick={() => { setActiveTabKey('company'); setDrawerCollapsed(false); setDrawerVisible(true); }}
+                    title="企业分析报告"
                   >
-                    <div>
-                      <CompanySummaryReport data={jsonData} />
-                    </div>
-                  </TabPane>
+                    <FileTextOutlined style={{ fontSize: '20px' }} />
+                  </div>
                 );
               }
 
               if (tabKey === 'category' && hasCategoryData) {
                 return (
-                  <TabPane
+                  <div
                     key="category"
-                    tab={
-                      <span style={{ padding: '0 5px' }}>
-                        <FilterOutlined style={{ marginRight: '8px' }} />
-                        分类预测分析
-                      </span>
-                    }
+                    style={{
+                      cursor: 'pointer',
+                      padding: '12px',
+                      borderRadius: '6px',
+                      background: activeTabKey === 'category' ? '#1890ff' : '#f0f0f0',
+                      color: activeTabKey === 'category' ? '#fff' : '#666',
+                      transition: 'all 0.3s ease'
+                    }}
+                    onClick={() => { setActiveTabKey('category'); setDrawerCollapsed(false); setDrawerVisible(true); }}
+                    title="分类预测分析报告"
                   >
-                    <div>
-                      <CategoryAnalysisReport data={categoryReportData} />
-                    </div>
-                  </TabPane>
+                    <FilterOutlined style={{ fontSize: '20px' }} />
+                  </div>
                 );
               }
 
               if (tabKey === 'competitor' && hasCompetitorData) {
                 return (
-                  <TabPane
+                  <div
                     key="competitor"
-                    tab={
-                      <span style={{ padding: '0 5px' }}>
-                        <TeamOutlined style={{ marginRight: '8px' }} />
-                        竞争对手分析
-                      </span>
-                    }
+                    style={{
+                      cursor: 'pointer',
+                      padding: '12px',
+                      borderRadius: '6px',
+                      background: activeTabKey === 'competitor' ? '#1890ff' : '#f0f0f0',
+                      color: activeTabKey === 'competitor' ? '#fff' : '#666',
+                      transition: 'all 0.3s ease'
+                    }}
+                    onClick={() => { setActiveTabKey('competitor'); setDrawerCollapsed(false); setDrawerVisible(true); }}
+                    title="竞争对手分析报告"
                   >
-                    <div>
-                      <CompetitorAnalysisReport data={competitorReportData} />
-                    </div>
-                  </TabPane>
+                    <TeamOutlined style={{ fontSize: '20px' }} />
+                  </div>
                 );
               }
 
               return null;
             })}
-          </Tabs>
-        </div>
+          </div>
+        ) : (
+          // 展开状态：显示完整的标签页内容
+          <div style={{ height: '100%', overflow: 'auto' }}>
+            <Tabs
+              activeKey={activeTabKey}
+              onChange={setActiveTabKey}
+              size="small"
+            >
+              {tabOrder.map(tabKey => {
+                if (tabKey === 'company') {
+                  return (
+                    <TabPane
+                      key="company"
+                      tab={
+                        <span style={{ padding: '0 5px' }}>
+                          <FileTextOutlined style={{ marginRight: '8px' }} />
+                          企业分析报告
+                        </span>
+                      }
+                      style={{ padding: '0px 16px' }}
+                    >
+                      <div>
+                        <CompanySummaryReport data={jsonData} />
+                      </div>
+                    </TabPane>
+                  );
+                }
+
+                if (tabKey === 'category' && hasCategoryData) {
+                  return (
+                    <TabPane
+                      key="category"
+                      tab={
+                        <span style={{ padding: '0 5px' }}>
+                          <FilterOutlined style={{ marginRight: '8px' }} />
+                          分类预测分析报告
+                        </span>
+                      }
+                    >
+                      <div>
+                        <CategoryAnalysisReport data={categoryReportData} />
+                      </div>
+                    </TabPane>
+                  );
+                }
+
+                if (tabKey === 'competitor' && hasCompetitorData) {
+                  return (
+                    <TabPane
+                      key="competitor"
+                      tab={
+                        <span style={{ padding: '0 5px' }}>
+                          <TeamOutlined style={{ marginRight: '8px' }} />
+                          竞争对手分析报告
+                        </span>
+                      }
+                    >
+                      <div>
+                        <CompetitorAnalysisReport data={competitorReportData} />
+                      </div>
+                    </TabPane>
+                  );
+                }
+
+                return null;
+              })}
+            </Tabs>
+          </div>
+        )}
       </Drawer>
 
       {/* Top-K 输入弹窗 */}

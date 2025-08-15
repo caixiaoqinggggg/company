@@ -28,6 +28,7 @@ export interface TopNClassificationResponse {
     backend_type: string;
     backend_port: number;
     info: string;
+    report?: string; // 后端返回的报告数据
 }
 
 // 竞争对手召回响应
@@ -36,6 +37,7 @@ export interface CompetitorRecallResponse {
     topk: number;
     competitors: string[];
     info: string;
+    report?: string; // 后端返回的报告数据
 }
 
 // 分类标准枚举

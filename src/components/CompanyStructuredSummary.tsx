@@ -60,13 +60,13 @@ function buildSrcDoc(data: CompanyClassificationResponse | null): string {
     return style + sections.join('') + endHtml;
 }
 
-const CompanyStructuredSummary: React.FC<CompanyStructuredSummaryProps> = ({ data, height = 380 }) => {
+const CompanyStructuredSummary: React.FC<CompanyStructuredSummaryProps> = ({ data, height = 400 }) => {
     const srcDoc = useMemo(() => buildSrcDoc(data), [data]);
     return (
-        <div style={{ border: '1px solid #eee', borderRadius: 6, overflow: 'hidden' }}>
+        <div style={{ border: '1px solid #eee', borderRadius: 6, overflow: 'hidden', height: `${height}px` }}>
             <iframe
                 title="company-structured-view"
-                style={{ width: '100%', border: 'none' }}
+                style={{ width: '100%', border: 'none', height: '100%' }}
                 srcDoc={srcDoc}
             />
         </div>
