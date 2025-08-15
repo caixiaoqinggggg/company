@@ -667,6 +667,7 @@ export default function CompanyAnalysisPage() {
                           分类预测分析报告
                         </span>
                       }
+                      style={{ padding: '0px 16px' }}
                     >
                       <div>
                         <CategoryAnalysisReport data={categoryReportData} />
@@ -685,6 +686,7 @@ export default function CompanyAnalysisPage() {
                           竞争对手分析报告
                         </span>
                       }
+                      style={{ padding: '0px 16px' }}
                     >
                       <div>
                         <CompetitorAnalysisReport data={competitorReportData} />
