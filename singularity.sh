@@ -6,9 +6,8 @@
 set -e
 
 # 配置
-SINGULARITY_DIR="./singularity"
 SINGULARITY_IMAGE="company-app.sif"
-SINGULARITY_DEF="$SINGULARITY_DIR/company-app-alpine.def"
+SINGULARITY_DEF="company-app.def"
 BACKEND_PORT="${BACKEND_PORT:-9080}"
 FRONTEND_PORT="${FRONTEND_PORT:-3000}"
 
@@ -80,6 +79,22 @@ build_image() {
     if [ ! -f "$SINGULARITY_DEF" ]; then
         log_error "定义文件不存在: $SINGULARITY_DEF"
         exit 1
+    fi
+    
+    # 检查必要文件
+    if [ ! -f "package.json" ]; then
+        log_error "package.json 不存在，请在项目根目录运行"
+        exit 1
+    fi
+    
+    if [ ! -f "pnpm-lock.yaml" ]; then
+        log_warn "pnpm-lock.yaml 不存在，尝试生成..."
+        if command -v pnpm &> /dev/null; then
+            pnpm install --lockfile-only
+        else
+            log_error "请先安装 pnpm: npm install -g pnpm"
+            exit 1
+        fi
     fi
     
     if [ "$use_sudo" = true ]; then
