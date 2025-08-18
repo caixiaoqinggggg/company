@@ -1,6 +1,12 @@
 # Singularity 部署
 
-使用 Singularity 容器化部署，**无需 Docker 环境**。
+使用 Singularity 容器化部署，基于 Docker Hub 镜像。
+
+## 重要说明
+
+- **不需要安装 Docker** - Singularity 直接从 Docker Hub 拉取镜像
+- **Bootstrap: docker** - 使用 Docker Hub 的 node:18-alpine 作为基础镜像
+- **自动处理** - Singularity 会自动转换 Docker 镜像格式
 
 ## 快速开始
 
