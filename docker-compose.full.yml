@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  # 后端服务
+  backend:
+    image: your-backend-image:latest  # 替换为实际的后端镜像
+    container_name: company-backend
+    ports:
+      - "9080:9080"  # 映射后端端口
+    networks:
+      - company-network
+    # 其他后端配置...
+
+  # 前端服务
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: /api
+    image: company-analysis:latest
+    container_name: company-analysis-app
+    ports:
+      - "${APP_PORT:-3000}:80"
+    environment:
+      # 使用容器名称访问后端
+      API_BACKEND_URL: http://backend:9080
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - company-network
+
+networks:
+  company-network:
+    driver: bridge

@@ -18,19 +18,49 @@
 cp .env.example .env
 ```
 
-编辑 `.env` 文件，修改后端 API 地址：
+编辑 `.env` 文件，根据你的部署方式配置后端 API 地址：
 
 ```env
 # 应用端口
 APP_PORT=3000
 
-# 后端 API 地址（修改为你的实际地址）
-API_BACKEND_URL=http://your-backend-server:9080
+# 后端 API 地址配置（根据部署方式选择）：
+# 1. 前后端同一 docker-compose 部署
+API_BACKEND_URL=http://backend:9080
+
+# 2. 分别部署但在同一 Docker 网络
+# API_BACKEND_URL=http://container-name:9080
+
+# 3. 使用宿主机地址（Linux）
+# API_BACKEND_URL=http://172.17.0.1:9080
+
+# 4. 使用宿主机地址（Docker Desktop）
+# API_BACKEND_URL=http://host.docker.internal:9080
 ```
 
 ### 3. 构建和运行
 
-使用 Docker Compose 构建并启动应用：
+#### 方式一：前后端一起部署（推荐）
+
+使用完整的 docker-compose 配置：
+
+```bash
+# 使用包含前后端的完整配置
+cp docker-compose.full.yml docker-compose.yml
+
+# 修改后端镜像名称（编辑 docker-compose.yml）
+# 将 your-backend-image:latest 替换为实际的后端镜像
+
+# 构建并启动所有服务
+docker-compose up -d
+
+# 查看日志
+docker-compose logs -f
+```
+
+#### 方式二：仅部署前端
+
+使用默认的 docker-compose 配置：
 
 ```bash
 # 构建镜像
@@ -58,12 +88,82 @@ docker build -t company-analysis:latest .
 
 ### 运行容器
 
+#### 方式一：与后端容器在同一网络
+
 ```bash
+# 创建共享网络
+docker network create company-network
+
+# 假设后端容器已在运行（名称为 backend-container）
+docker run -d \
+  --name backend-container \
+  --network company-network \
+  -p 9080:9080 \
+  your-backend-image:latest
+
+# 运行前端容器
+docker run -d \
+  --name company-app \
+  --network company-network \
+  -p 3000:80 \
+  -e API_BACKEND_URL=http://backend-container:9080 \
+  company-analysis:latest
+```
+
+#### 方式二：使用宿主机地址
+
+```bash
+# Linux 环境
 docker run -d \
   --name company-app \
   -p 3000:80 \
-  -e API_BACKEND_URL=http://your-backend-server:9080 \
+  -e API_BACKEND_URL=http://172.17.0.1:9080 \
   company-analysis:latest
+
+# Docker Desktop (Mac/Windows)
+docker run -d \
+  --name company-app \
+  -p 3000:80 \
+  -e API_BACKEND_URL=http://host.docker.internal:9080 \
+  company-analysis:latest
+```
+
+## 容器间通信配置
+
+### 网络架构选择
+
+#### 1. Bridge 网络（推荐）
+容器间使用服务名或容器名通信：
+
+```yaml
+# docker-compose.yml
+services:
+  backend:
+    container_name: company-backend
+    # ...
+  
+  frontend:
+    environment:
+      API_BACKEND_URL: http://backend:9080  # 使用服务名
+      # 或
+      # API_BACKEND_URL: http://company-backend:9080  # 使用容器名
+```
+
+#### 2. Host 网络模式
+容器直接使用宿主机网络（仅 Linux）：
+
+```bash
+docker run --network host ...
+# 可以使用 localhost:9080 访问后端
+```
+
+#### 3. 跨主机部署
+使用实际 IP 地址或域名：
+
+```env
+API_BACKEND_URL=http://192.168.1.100:9080
+# 或
+API_BACKEND_URL=https://api.example.com
 ```
 
 ## 配置说明
@@ -73,8 +173,18 @@ docker run -d \
 | 变量名 | 说明 | 默认值 | 使用阶段 |
 |--------|------|--------|----------|
 | `APP_PORT` | 应用访问端口 | 3000 | 运行时 |
-| `API_BACKEND_URL` | 后端 API 服务地址 | http://192.168.80.12:9080 | 运行时 |
+| `API_BACKEND_URL` | 后端 API 服务地址 | http://backend:9080 | 运行时 |
 | `VITE_API_BASE_URL` | 前端 API 请求前缀 | /api | 构建时 |
+
+### 后端地址配置示例
+
+| 部署方式 | API_BACKEND_URL 配置值 | 说明 |
+|---------|------------------------|------|
+| 同一 docker-compose | `http://backend:9080` | 使用服务名 |
+| 同一 Docker 网络 | `http://container-name:9080` | 使用容器名 |
+| Linux Docker | `http://172.17.0.1:9080` | Docker 默认网桥 |
+| Docker Desktop | `http://host.docker.internal:9080` | Mac/Windows |
+| 跨主机 | `http://192.168.1.100:9080` | 实际 IP 地址 |
 
 ### 架构说明
 
@@ -143,9 +253,24 @@ docker exec company-analysis-app cat /etc/nginx/conf.d/default.conf
 
 ### 常见问题
 
-1. **API 请求失败**：检查 `API_BACKEND_URL` 是否正确配置
-2. **端口冲突**：修改 `APP_PORT` 为其他可用端口
-3. **构建失败**：确保 pnpm-lock.yaml 文件存在且完整
+1. **API 请求失败**
+   - 检查 `API_BACKEND_URL` 是否正确配置
+   - 确认前后端容器在同一网络
+   - 使用 `docker network ls` 查看网络
+   - 使用 `docker network inspect <network-name>` 检查容器是否在网络中
+
+2. **容器间无法通信**
+   ```bash
+   # 测试容器间连通性
+   docker exec company-app ping backend-container
+   
+   # 检查容器网络
+   docker inspect company-app | grep NetworkMode
+   ```
+
+3. **端口冲突**：修改 `APP_PORT` 为其他可用端口
+
+4. **构建失败**：确保 pnpm-lock.yaml 文件存在且完整
 
 ## 更新部署
 
