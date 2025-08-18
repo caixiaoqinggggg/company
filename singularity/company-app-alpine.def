@@ -1,0 +1,276 @@
+Bootstrap: library
+From: alpine:3.18
+
+%files
+    . /app
+
+%post
+    # 更新包管理器
+    apk update
+    apk upgrade
+    
+    # 安装必要的软件包
+    apk add --no-cache \
+        nodejs \
+        npm \
+        nginx \
+        gettext \
+        supervisor \
+        bash \
+        curl \
+        git
+    
+    # 设置工作目录
+    cd /app
+    
+    # 安装 pnpm
+    npm install -g pnpm
+    
+    # 安装项目依赖
+    pnpm install --frozen-lockfile
+    
+    # 构建应用
+    export VITE_API_BASE_URL=/api
+    pnpm run build
+    
+    # 复制构建产物到 nginx 目录
+    mkdir -p /usr/share/nginx/html
+    cp -r /app/dist/* /usr/share/nginx/html/
+    
+    # 创建必要的目录
+    mkdir -p /etc/nginx/http.d
+    mkdir -p /var/log/nginx
+    mkdir -p /var/cache/nginx
+    mkdir -p /var/run
+    mkdir -p /etc/supervisor/conf.d
+    
+    # 创建运行时配置脚本
+    cat > /usr/local/bin/configure-nginx.sh << 'EOF'
+#!/bin/sh
+# 自动检测宿主机 IP
+get_host_ip() {
+    # 尝试多种方法获取宿主机 IP
+    
+    # 方法1: 从默认路由获取
+    HOST_IP=$(ip route show default | awk '/default/ {print $3}' 2>/dev/null)
+    
+    # 方法2: 获取主网卡 IP
+    if [ -z "$HOST_IP" ]; then
+        HOST_IP=$(hostname -I | awk '{print $1}' 2>/dev/null)
+    fi
+    
+    # 方法3: 从 /etc/hosts 获取
+    if [ -z "$HOST_IP" ]; then
+        HOST_IP=$(grep -E "^[0-9]" /etc/hosts | grep -v "127.0.0.1" | head -1 | awk '{print $1}' 2>/dev/null)
+    fi
+    
+    # 方法4: 获取与外网连接的接口 IP
+    if [ -z "$HOST_IP" ]; then
+        HOST_IP=$(ip route get 8.8.8.8 2>/dev/null | awk '{print $7; exit}')
+    fi
+    
+    # 如果都失败，使用 localhost
+    if [ -z "$HOST_IP" ]; then
+        HOST_IP="localhost"
+    fi
+    
+    echo "$HOST_IP"
+}
+
+# 设置默认值
+APP_PORT=${APP_PORT:-3000}
+BACKEND_PORT=${BACKEND_PORT:-9080}
+
+# 如果没有指定 API_BACKEND_URL，自动构建
+if [ -z "$API_BACKEND_URL" ] || [ "$API_BACKEND_URL" = "http://localhost:9080" ]; then
+    # 检测是否在 Singularity 容器中
+    if [ -n "$SINGULARITY_CONTAINER" ]; then
+        # 在容器中，使用宿主机 IP
+        HOST_IP=$(get_host_ip)
+        API_BACKEND_URL="http://${HOST_IP}:${BACKEND_PORT}"
+        echo "检测到 Singularity 容器环境"
+        echo "自动设置后端地址为: $API_BACKEND_URL"
+    else
+        # 不在容器中，使用 localhost
+        API_BACKEND_URL="http://localhost:${BACKEND_PORT}"
+    fi
+else
+    echo "使用指定的后端地址: $API_BACKEND_URL"
+fi
+
+# 创建 nginx 配置
+cat > /etc/nginx/http.d/default.conf << NGINX_EOF
+server {
+    listen ${APP_PORT};
+    server_name localhost;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # 前端路由支持
+    location / {
+        try_files \$uri \$uri/ /index.html;
+    }
+
+    # API 代理
+    location /api {
+        proxy_pass $API_BACKEND_URL;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        
+        # 超时设置
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        
+        # 禁用缓冲
+        proxy_buffering off;
+    }
+
+    # 健康检查端点
+    location /health {
+        access_log off;
+        return 200 "healthy\n";
+        add_header Content-Type text/plain;
+    }
+}
+NGINX_EOF
+
+# 创建 supervisor 配置
+cat > /etc/supervisor/conf.d/supervisord.conf << SUPERVISOR_EOF
+[supervisord]
+nodaemon=true
+user=root
+logfile=/var/log/supervisord.log
+pidfile=/var/run/supervisord.pid
+
+[program:nginx]
+command=/usr/sbin/nginx -g "daemon off;"
+autostart=true
+autorestart=true
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+priority=10
+EOF
+    
+    chmod +x /usr/local/bin/configure-nginx.sh
+    
+    # 清理构建文件，减小镜像体积
+    rm -rf /app/node_modules
+    rm -rf /app/src
+    rm -rf /app/public
+    rm -rf /root/.npm
+    rm -rf /root/.pnpm-store
+    
+    # 创建 nginx 用户和组
+    addgroup -g 101 -S nginx 2>/dev/null || true
+    adduser -S -D -H -u 101 -h /var/cache/nginx -s /sbin/nologin -G nginx -g nginx nginx 2>/dev/null || true
+
+%environment
+    export APP_PORT=3000
+    export BACKEND_PORT=9080
+    export API_BACKEND_URL=auto
+    export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+%runscript
+    echo "========================================="
+    echo "  Company Analysis Application"
+    echo "========================================="
+    
+    # 配置 nginx
+    /usr/local/bin/configure-nginx.sh
+    
+    echo "配置信息:"
+    echo "  - 应用端口: ${APP_PORT:-3000}"
+    echo "  - 后端端口: ${BACKEND_PORT:-9080}"
+    echo "========================================="
+    
+    # 检查配置
+    nginx -t || exit 1
+    
+    echo "Starting services..."
+    
+    # 启动 supervisor
+    exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
+
+%startscript
+    # 后台运行模式
+    /usr/local/bin/configure-nginx.sh
+    nginx -t && exec nginx -g "daemon off;"
+
+%test
+    # 测试脚本
+    echo "Running tests..."
+    
+    # 检查 nginx 是否安装
+    which nginx || exit 1
+    
+    # 检查应用文件是否存在
+    [ -f /usr/share/nginx/html/index.html ] || exit 1
+    
+    # 检查配置脚本
+    [ -x /usr/local/bin/configure-nginx.sh ] || exit 1
+    
+    echo "All tests passed!"
+
+%labels
+    Author Company Analysis Team
+    Version 1.0
+    BuildDate 2024
+    Description Company Analysis Application - Alpine Linux Based
+
+%help
+    Company Analysis Application Singularity Container
+    ==================================================
+    
+    这是一个基于 Alpine Linux 的 Singularity 容器，完全不依赖 Docker。
+    
+    特性:
+    ------
+    - 自动检测宿主机 IP 地址
+    - 自动配置前后端通信
+    - 支持同机器多容器部署
+    
+    使用方法:
+    ---------
+    1. 构建镜像:
+       sudo singularity build company-app.sif company-app-alpine.def
+    
+    2. 基础运行（自动检测配置）:
+       singularity run company-app.sif
+    
+    3. 指定后端端口（自动检测 IP）:
+       singularity run --env BACKEND_PORT=8080 company-app.sif
+    
+    4. 手动指定后端地址:
+       singularity run --env API_BACKEND_URL=http://192.168.1.100:9080 company-app.sif
+    
+    5. 调试模式:
+       singularity shell company-app.sif
+    
+    环境变量:
+    ---------
+    - APP_PORT: 前端应用端口 (默认: 3000)
+    - BACKEND_PORT: 后端服务端口 (默认: 9080)
+    - API_BACKEND_URL: 后端地址 (默认: auto，自动检测)
+    
+    自动检测说明:
+    -------------
+    当 API_BACKEND_URL 设置为 "auto" 或未设置时，容器会：
+    1. 检测是否在 Singularity 容器中运行
+    2. 自动获取宿主机 IP 地址
+    3. 使用宿主机 IP + BACKEND_PORT 构建后端地址
+    
+    这样前后端容器即使在同一台机器上也能正常通信。
+    
+    测试:
+    -----
+    singularity test company-app.sif
