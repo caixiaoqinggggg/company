@@ -45,7 +45,7 @@ RUN chmod +x /docker-entrypoint.sh
 EXPOSE 80
 
 # 环境变量（运行时可配置）
-ENV API_BACKEND_URL=http://192.168.80.12:9080
+ENV API_BACKEND_URL=http://backend:9080
 
 # 使用自定义入口脚本
 ENTRYPOINT ["/docker-entrypoint.sh"]
