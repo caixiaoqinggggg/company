@@ -11,7 +11,7 @@
 ## 快速开始
 
 ```bash
-# 1. 构建镜像
+# 1. 构建镜像（必须在项目根目录执行）
 ./singularity.sh build --sudo
 
 # 2. 运行应用（自动检测 IP 配置）
@@ -20,6 +20,17 @@
 # 3. 访问应用
 # http://localhost:3000
 ```
+
+## 构建注意事项
+
+⚠️ **必须在项目根目录执行构建命令**，因为需要访问以下文件：
+- `package.json` 
+- `pnpm-lock.yaml`
+- `src/` 目录
+- `public/` 目录
+- 其他配置文件
+
+如果缺少 `pnpm-lock.yaml`，脚本会自动尝试生成。
 
 ## 特性
 
@@ -32,12 +43,9 @@
 
 ```
 .
-├── singularity.sh              # 主部署脚本
-└── singularity/               # Singularity 配置目录
-    ├── company-app-alpine.def  # 容器定义文件
-    ├── microservices.sh        # 微服务部署脚本（可选）
-    ├── README.md              # 详细文档
-    └── QUICKSTART.md          # 快速指南
+├── singularity.sh      # 主部署脚本
+├── company-app.def     # Singularity 定义文件
+└── company-app.sif     # 构建后的镜像文件（构建后生成）
 ```
 
 ## 常用命令
@@ -62,6 +70,8 @@
 ./singularity.sh help
 ```
 
-## 高级用法
+## 故障排除
 
-如需微服务部署或更多配置，请查看 `singularity/README.md`。
+1. **构建失败**：确保在项目根目录执行，且有 `pnpm-lock.yaml` 文件
+2. **网络问题**：检查防火墙设置，确保端口可访问
+3. **权限问题**：构建需要 sudo，运行不需要
