@@ -15,7 +15,8 @@ import {
   Modal,
   InputNumber,
   Drawer,
-  Tabs
+  Tabs,
+  Checkbox
 } from "antd";
 import {
   SearchOutlined,
@@ -33,6 +34,7 @@ import { companyApi } from "./services/api";
 import CompanySummaryReport from "./components/CompanySummaryReport";
 import CompetitorAnalysisReport from "./components/CompetitorAnalysisReport";
 import CategoryAnalysisReport from "./components/CategoryAnalysisReport";
+import GlobalConfig from "./components/GlobalConfig";
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -48,6 +50,8 @@ export default function CompanyAnalysisPage() {
   const [topK, setTopK] = useState<number>(5);
   const [showTopKModal, setShowTopKModal] = useState(false);
   const [pendingPanel, setPendingPanel] = useState<"category" | "competitor" | null>(null);
+  const [useTier1Constraint, setUseTier1Constraint] = useState<boolean>(true);
+  const [tier1Predictions, setTier1Predictions] = useState<any>(null);
   const [categoryAnalysisData, setCategoryAnalysisData] = useState<any>(null);
   const [competitorAnalysisData, setCompetitorAnalysisData] = useState<any>(null);
 
@@ -83,11 +87,21 @@ export default function CompanyAnalysisPage() {
 
     setLoading(true);
     try {
+      // 获取API配置
+      const apiConfigStr = localStorage.getItem('api_config');
+      const apiConfig = apiConfigStr ? JSON.parse(apiConfigStr) : {};
+      
+      // 获取分析年份，默认为2025
+      const analysisYear = localStorage.getItem('analysis_year');
+      const year = analysisYear ? parseInt(analysisYear) : 2025;
+
       // 调用企业分类分析接口
       const response = await companyApi.classifyCompany({
         name: companyName.trim(),
         classification_criterion: classificationCriterion,
         tier: tier,
+        year: year,
+        llm_config: apiConfig,
       });
 
       // 设置企业分类分析结果
@@ -132,21 +146,48 @@ export default function CompanyAnalysisPage() {
     setPendingPanel(null);
 
     try {
+      // 获取API配置
+      const apiConfigStr = localStorage.getItem('api_config');
+      const apiConfig = apiConfigStr ? JSON.parse(apiConfigStr) : {};
+      
+      // 获取分析年份，默认为2025
+      const analysisYear = localStorage.getItem('analysis_year');
+      const year = analysisYear ? parseInt(analysisYear) : 2025;
+
       if (pendingPanel === "category") {
         // 设置分类预测loading状态
         setCategoryLoading(true);
 
-        // 调用 Top-N 分类预测接口
-        const response = await companyApi.classifyTopN({
+        // 构建基础参数
+        const baseParams = {
           name: companyName.trim(),
           classification_criterion: classificationCriterion,
           tier: tier,
           top_k: topK,
-        });
+          year: year,
+          llm_config: apiConfig,
+        };
+
+        // 如果是二级分类且有一级分类数据，添加一级分类约束
+        let finalParams: any = baseParams;
+        if (tier === CLASSIFICATION_TIER.TIER2 && jsonData) {
+          // 添加一级分类约束参数
+          finalParams = {
+            ...baseParams,
+            use_tier1_constraint: useTier1Constraint,
+            tier1_predictions: tier1Predictions,
+          };
+        }
+
+        // 调用 Top-N 分类预测接口
+        const response = await companyApi.classifyTopN(finalParams);
 
 
         setCategoryAnalysisData(response);
 
+        if(tier === CLASSIFICATION_TIER.TIER1 && jsonData) {
+          setTier1Predictions((response as any).predictions);
+        }
         // 设置分类预测数据状态
         setHasCategoryData(true);
 
@@ -177,6 +218,8 @@ export default function CompanyAnalysisPage() {
         const response = await companyApi.getCompetitors({
           name: companyName.trim(),
           topk: topK,
+          year: year,
+          llm_config: apiConfig,
         });
         setCompetitorAnalysisData(response);
 
@@ -219,7 +262,7 @@ export default function CompanyAnalysisPage() {
     <Layout style={{ minHeight: '100vh' }}>
       {/* 左侧栏 - 全局配置 */}
       <Layout.Sider
-        width={280}
+        width={320}
         collapsed={sidebarCollapsed}
         collapsedWidth={80}
         style={{
@@ -229,9 +272,9 @@ export default function CompanyAnalysisPage() {
         trigger={null}
       >
         <div style={{
-          padding: sidebarCollapsed ? '16px 8px' : '16px',
+          padding: sidebarCollapsed ? '16px 8px' : '24px',
           height: '100%',
-          overflow: 'hidden'
+          overflow: 'auto'
         }}>
           {/* 标题和切换按钮 */}
           <div style={{
@@ -260,77 +303,20 @@ export default function CompanyAnalysisPage() {
             />
           </div>
 
-          {/* 分类标准选择 */}
+          {/* 全局配置组件 */}
           {!sidebarCollapsed && (
-            <div style={{ marginBottom: '20px' }}>
-              <Text strong style={{ display: 'block', marginBottom: '8px' }}>
-                分类标准
-              </Text>
-              <Select
-                value={classificationCriterion}
-                onChange={setClassificationCriterion}
-                style={{ width: '100%' }}
-                placeholder="请选择分类标准"
-              >
-                {Object.entries(CLASSIFICATION_CRITERIA_LABELS).map(([value, label]) => (
-                  <Select.Option key={value} value={value}>
-                    {label}
-                  </Select.Option>
-                ))}
-              </Select>
-            </div>
-          )}
-
-          {/* 分类层级选择 */}
-          {!sidebarCollapsed && (
-            <div style={{ marginBottom: '20px' }}>
-              <Text strong style={{ display: 'block', marginBottom: '8px' }}>
-                分类层级
-              </Text>
-              <Select
-                value={tier}
-                onChange={setTier}
-                style={{ width: '100%' }}
-                placeholder="请选择分类层级"
-              >
-                <Select.Option value={CLASSIFICATION_TIER.TIER1}>一级分类</Select.Option>
-                <Select.Option value={CLASSIFICATION_TIER.TIER2}>二级分类</Select.Option>
-              </Select>
-            </div>
-          )}
-
-          {/* 分隔线 */}
-          {!sidebarCollapsed && <Divider style={{ margin: '20px 0' }} />}
-
-          {/* 当前配置信息 */}
-          {!sidebarCollapsed ? (
-            <div>
-              <Text type="secondary" style={{ fontSize: '12px' }}>
-                当前配置：
-              </Text>
-              <div style={{ marginTop: '8px', padding: '12px', background: '#f5f5f5', borderRadius: '6px' }}>
-                <Text style={{ fontSize: '12px' }}>
-                  分类标准：{CLASSIFICATION_CRITERIA_LABELS[classificationCriterion]}
-                </Text>
-                <br />
-                <Text style={{ fontSize: '12px' }}>
-                  分类层级：{tier === CLASSIFICATION_TIER.TIER1 ? '一级' : '二级'}
-                </Text>
-              </div>
-            </div>
-          ) : (
-            // 收起状态下的简化显示
-            <div style={{ textAlign: 'center', marginTop: '20px' }}>
-              <div style={{
-                padding: '8px',
-                background: '#f5f5f5',
-                borderRadius: '6px',
-                fontSize: '12px',
-                color: '#666'
-              }}>
-                {CLASSIFICATION_CRITERIA_LABELS[classificationCriterion].substring(0, 2)}
-              </div>
-            </div>
+            <GlobalConfig 
+              onConfigChange={(config) => {
+                console.log('配置已更新:', config);
+              }}
+              classificationCriterion={classificationCriterion}
+              tier={tier}
+              onClassificationChange={(criterion, tier) => {
+                setClassificationCriterion(criterion);
+                setTier(tier);
+              }}
+              hasTier1Data={!!jsonData} // 传递是否有一级分类数据
+            />
           )}
         </div>
       </Layout.Sider>
@@ -710,6 +696,7 @@ export default function CompanyAnalysisPage() {
         onCancel={() => {
           setShowTopKModal(false);
           setPendingPanel(null);
+          setUseTier1Constraint(true); // 重置为默认值
         }}
         okText="确认"
         cancelText="取消"
@@ -733,6 +720,20 @@ export default function CompanyAnalysisPage() {
               : "请输入需要召回的竞争对手数量（1-20个）"
             }
           </Text>
+          
+          {/* 二级分类时显示一级分类约束选择框 */}
+          {pendingPanel === "category" && tier === CLASSIFICATION_TIER.TIER2 && (
+            <div style={{ marginTop: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                <Checkbox
+                  checked={useTier1Constraint}
+                  onChange={(e) => setUseTier1Constraint(e.target.checked)}
+                >
+                  是否使用一级行业预测结果作为约束
+                </Checkbox>
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
     </Layout>

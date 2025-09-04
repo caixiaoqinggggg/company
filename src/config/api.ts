@@ -1,12 +1,9 @@
-import { envConfig } from './env';
-
 // API 配置文件
 export const API_CONFIG = {
-    // 基础 URL
-    BASE_URL: envConfig.API_BASE_URL,
-
     // 接口路径
     ENDPOINTS: {
+        // 健康检查
+        HEALTH_CHECK: '/health',
         // 企业分类分析
         COMPANY_CLASSIFICATION: '/company_classification/classify_company',
         // Top-N分类预测
@@ -18,7 +15,8 @@ export const API_CONFIG = {
 
 // 构建完整的 API URL
 export const buildApiUrl = (endpoint: string): string => {
-    return `${API_CONFIG.BASE_URL}${endpoint}`;
+    const backendApi = localStorage.getItem('backend_api');
+    return `${backendApi}${endpoint}`;
 };
 
 // 默认请求配置

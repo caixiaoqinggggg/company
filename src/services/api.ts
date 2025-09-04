@@ -4,11 +4,18 @@ import { buildApiUrl, DEFAULT_REQUEST_CONFIG, API_CONFIG } from '../config/api';
 // 创建 axios 实例
 const apiClient = axios.create({
     ...DEFAULT_REQUEST_CONFIG,
+    // 添加CORS相关配置
+    withCredentials: false,
 });
 
 // 请求拦截器
 apiClient.interceptors.request.use(
     (config) => {
+        // 移除可能导致预检请求的头部
+        delete config.headers['Access-Control-Allow-Origin'];
+        delete config.headers['Access-Control-Allow-Methods'];
+        delete config.headers['Access-Control-Allow-Headers'];
+        
         // 可以在这里添加认证 token
         // const token = localStorage.getItem('token');
         // if (token) {
@@ -49,11 +56,25 @@ apiClient.interceptors.response.use(
 
 // API 接口函数
 export const companyApi = {
+    // 健康检查
+    async healthCheck(params: {
+        base_url: string;
+        api_key: string;
+        model_use: string;
+        max_retries: number;
+        timeout: number;
+        temperature: number;
+    }) {
+        return apiClient.post(buildApiUrl(API_CONFIG.ENDPOINTS.HEALTH_CHECK), params);
+    },
+
     // 企业分类分析
     async classifyCompany(params: {
         name: string;
         classification_criterion: string;
         tier: string;
+        year: number;
+        llm_config: object;
     }) {
         return apiClient.post(buildApiUrl(API_CONFIG.ENDPOINTS.COMPANY_CLASSIFICATION), params);
     },
@@ -66,6 +87,8 @@ export const companyApi = {
         top_k: number;
         use_tier1_constraint?: boolean;
         tier1_predictions?: Record<string, number>;
+        year: number;
+        llm_config: object;
     }) {
         return apiClient.post(buildApiUrl(API_CONFIG.ENDPOINTS.TOPN_CLASSIFICATION), params);
     },
@@ -74,6 +97,8 @@ export const companyApi = {
     async getCompetitors(params: {
         name: string;
         topk: number;
+        year: number;
+        llm_config: object;
     }) {
         return apiClient.post(buildApiUrl(API_CONFIG.ENDPOINTS.COMPETITOR_RECALL), params);
     },
