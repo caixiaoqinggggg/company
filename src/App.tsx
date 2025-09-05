@@ -208,9 +208,16 @@ export default function CompanyAnalysisPage() {
         setCategoryReportData((response as any).report || '');
 
         // 显示成功消息，包含info内容
-        if ((response as any).info) {
-          message.success((response as any).info);
+      if ((response as any).info) {
+        if ((response as any).info === '未找到该公司')
+        {
+           message.error('缺少该公司此年份数据');
         }
+        else
+        {
+           message.success((response as any).info);
+        }
+      }
 
         // 将分类预测标签页添加到末尾
         setTabOrder(prev => {
@@ -243,9 +250,16 @@ export default function CompanyAnalysisPage() {
         setCompetitorReportData((response as any).report || '');
 
         // 显示成功消息，包含info内容
-        if ((response as any).info) {
-          message.success((response as any).info);
-        }
+      if ((response as any).info) {
+          if ((response as any).info === '未找到该公司')
+          {
+            message.error('缺少该公司此年份数据');
+          }
+          else
+          {
+            message.success((response as any).info);
+          }
+      }
 
         // 将竞争对手分析标签页添加到末尾
         setTabOrder(prev => {
