@@ -121,10 +121,23 @@ export default function CompanyAnalysisPage() {
       // 自动展开右侧抽屉
       setDrawerVisible(true);
 
+      // 确保抽屉打开
+      setDrawerVisible(true);
+      setDrawerCollapsed(false);
+
       // 重置为默认的企业分析报告标签页
       setActiveTabKey('company');
 
-      message.success("分析完成！");
+      if ((response as any).info) {
+        if ((response as any).info === '未找到该公司')
+        {
+           message.error('缺少该公司此年份数据');
+        }
+        else
+        {
+           message.success((response as any).info);
+        }
+      }
     } catch (error: any) {
 
       message.error(error.message || "分析失败，请重试");
